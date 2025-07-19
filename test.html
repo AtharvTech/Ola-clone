@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>leaflate</title>
+    <!-- leafleat CSS--------- -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@1.8.3/dist/css/autocomplete.min.css" />
+        
+    <!-- leafleat JS--------- -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@latest/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-providers@latest/leaflet-providers.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@1.8.3/dist/js/autocomplete.min.js"></script>
+
+    <!-- Style for ME------------------------------ -->
+    <style>
+        .mapview {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ----------------------------- -->
+    <div class="auto-search-wrapper">
+        <input type="text" autocomplete="off" id="pick" class="full-width" placeholder="enter the city name" />
+    </div>
+ 
+    <!-- ----------------------------- -->
+    <div class="mapview" id="map"></div>
+
+    <script>
+        //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        var osmMap = L.tileLayer.provider("OpenStreetMap.Mapnik");
+        var imageryMap = L.tileLayer.provider("Esri.WorldImagery");
+
+        var baseMaps = {
+            OSM: osmMap,
+            "World Imagery": imageryMap,
+        };
+
+        //   -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        // Map--Layers
+        var map = L.map("map", {
+            center: [16.867634, 74.570389],
+            zoom: 11,
+            layers: [osmMap],
+        });
+        var mapLayers = L.control.layers(baseMaps).addTo(map);
+
+        //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        //marker-------->
+        var marker = L.marker([16.840323,74.619566]).addTo(map);
+        //kolhapur = 16.691307, 74.244865
+        //sangli = 16.867634, 74.570389
+
+        //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        //AUTOCOMPLETE ROUTE
+        new Autocomplete("pick", {
+            // default selects the first item in
+            // the list of results
+            selectFirst: true,
+
+            // The number of characters entered should start searching
+            howManyCharacters: 2,
+
+            // onSearch
+            onSearch: ({ currentValue }) => {
+                // You can also use static files
+                // const api = '../static/search.json'
+                const api = `https://nominatim.openstreetmap.org/search?format=geojson&limit=5&city=${encodeURI(
+                    currentValue
+                )}`;
+
+                /**
+                 * jquery
+                 */
+                // return $.ajax({
+                //     url: api,
+                //     method: 'GET',
+                //   })
+                //   .done(function (data) {
+                //     return data
+                //   })
+                //   .fail(function (xhr) {
+                //     console.error(xhr);
+                //   });
+
+                // OR -------------------------------
+
+                /**
+                 * axios
+                 * If you want to use axios you have to add the
+                 * axios library to head html
+                 * https://cdnjs.com/libraries/axios
+                 */
+                // return axios.get(api)
+                //   .then((response) => {
+                //     return response.data;
+                //   })
+                //   .catch(error => {
+                //     console.log(error);
+                //   });
+
+                // OR -------------------------------
+
+                /**
+                 * Promise
+                 */
+                return new Promise((resolve) => {
+                    fetch(api)
+                        .then((response) => response.json())
+                        .then((data) => {
+                            resolve(data.features);
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                });
+            },
+            // nominatim GeoJSON format parse this part turns json into the list of
+            // records that appears when you type.
+            onResults: ({ currentValue, matches, template }) => {
+                const regex = new RegExp(currentValue, "gi");
+
+                // if the result returns 0 we
+                // show the no results element
+                return matches === 0
+                    ? template
+                    : matches
+                        .map((element) => {
+                            return `
+          <li class="loupe">
+            <p>
+              ${element.properties.display_name.replace(
+                                regex,
+                                (str) => `<b>${str}</b>`
+                            )}
+            </p>
+          </li> `;
+                        })
+                        .join("");
+            },
+
+            // we add an action to enter or click
+            onSubmit: ({ object }) => {
+                // remove all layers from the map
+                map.eachLayer(function (layer) {
+                    if (!!layer.toGeoJSON) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                const { display_name } = object.properties;
+                const [lng, lat] = object.geometry.coordinates;
+
+                const marker = L.marker([lat, lng], {
+                    title: display_name,
+                });
+
+                marker.addTo(map).bindPopup(display_name);
+
+                map.setView([lat, lng], 11);
+
+                //routing machine-------------------->
+                var control = L.Routing.control({
+                    waypoints: [L.latLng(16.840323,74.619566), L.latLng(lat, lng)],
+                    geocoder: L.Control.Geocoder.nominatim(),
+                }).addTo(map);
+                //distance found--------------------->
+                control.on('routesfound', function(e){
+                    var route = e.routes[0];
+                    var distance = route.summary.totalDistance;
+                    console.log('tot distance '+distance / 1000+' Km');
+                })
+                
+            },
+
+            // get index and data from li element after
+            // hovering over li with the mouse or using
+            // arrow keys ↓ | ↑
+            onSelectedItem: ({ index, element, object }) => {
+                console.log("onSelectedItem:", index, element, object);
+            },
+
+            // the method presents no results element
+            noResults: ({ currentValue, template }) =>
+                template(`<li>No results found: "${currentValue}"</li>`),
+        });
+        //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+       
+        //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    </script>
+</body>
+
+</html>

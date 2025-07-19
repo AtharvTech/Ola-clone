@@ -1,0 +1,117 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Live Input Field Value Selection</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+
+<input type="text" id="inputField" onkeyup="getInputValue()">
+
+<div id="output"></div>
+
+<script>
+function getInputValue() {
+    var inputValue = document.getElementById("inputField").value;
+
+    $.ajax({
+        type: "POST",
+        url: "test2.php",
+        data: { value: inputValue },
+        success: function(response) {
+            document.getElementById("output").innerHTML = response;
+        }
+    });
+}
+</script>
+
+php
+if(isset($_POST['value'])) {
+    $selectedValue = $_POST['value'];
+    echo "Selected value: " . $selectedValue;
+}
+
+</body>
+</html>-->
+
+
+<!-- Here is a complete code example for a taxi booking website where the customer can send a ride request and the driver can receive and respond to the request:
+Server-side code (Node.js with Express and Socket.io): -->
+
+<!-- Client-side code for customer (HTML and JavaScript): -->
+
+<!-- customer-interface.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Customer Interface</title>
+</head>
+<body>
+  <h1>Customer Interface</h1>
+  <button id="requestRideBtn">Request Ride</button>
+  <script src="test.js"></script>
+
+  <script src="https://cdn.socket.io/socket.io-4.0.1.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+
+    document.getElementById('requestRideBtn').addEventListener('click', () => {
+      const request = {
+        customerName: 'John Doe',
+        pickupLocation: '123 Main St',
+        destination: '456 Elm St'
+      };
+      socket.emit('requestRide', request);
+    });
+  </script>
+</body>
+</html>
+
+
+<!-- Client-side code for driver (HTML and JavaScript): -->
+
+<!-- driver-interface.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Driver Interface</title>
+</head>
+<body>
+  <h1>Driver Interface</h1>
+  <ul id="rideRequests"></ul>
+
+  <script src="https://cdn.socket.io/socket.io-4.0.1.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    socket.on('newRideRequest', (request) => {
+      const rideRequestsList = document.getElementById('rideRequests');
+      const li = document.createElement('li');
+      li.textContent = Customer ${request.customerName} has requested a ride from ${request.pickupLocation} to ${request.destination};
+      const acceptButton = document.createElement('button');
+      acceptButton.textContent = 'Accept';
+      acceptButton.addEventListener('click', () => {
+        socket.emit('acceptRequest', request.id);
+      });
+      const rejectButton = document.createElement('button');
+      rejectButton.textContent = 'Reject';
+      rejectButton.addEventListener('click', () => {
+        socket.emit('rejectRequest', request.id);
+      });
+      li.appendChild(acceptButton);
+      li.appendChild(rejectButton);
+      rideRequestsList.appendChild(li);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+  </script>
+</body>
+</html>
+
+
